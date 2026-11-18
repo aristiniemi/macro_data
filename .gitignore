@@ -1,0 +1,10 @@
+# Downloaded and generated data are never committed; users generate them by
+# running build_dataset.m.
+data/
+*.asv
+*.autosave
+octave-workspace
+.DS_Store
+
+# Private project notes for Claude Code, kept on the local machine only.
+CLAUDE.local.md

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>US Macro Dataset</title>
+<style>
+/* Layout: a fixed header strip, a tab row, then a responsive grid of chart cards; tables for coverage. */
+:root {
+  --bg: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --warn: #fab219;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5; --series-2: #d95926; --warn: #fab219;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+  --series-1: #3987e5; --series-2: #d95926; --warn: #fab219;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 14px/1.45 var(--font);
+  padding-block: 0 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header { padding: 20px 0 8px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
+header h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+header .sub { color: var(--ink-2); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 16px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; min-width: 0; }
+.tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.tile .v { font-size: 20px; margin-top: 2px; }
+.tile .d { font-size: 12px; color: var(--ink-2); }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--grid); margin-bottom: 14px; }
+nav.tabs a {
+  color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; border-radius: 4px 4px 0 0;
+}
+nav.tabs a:hover { background: var(--surface); }
+nav.tabs a.active { color: var(--ink); border-bottom-color: var(--series-1); }
+nav.tabs a:focus-visible, button:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; color: var(--ink-2); }
+.toolbar .lab { margin-right: 4px; }
+button.range {
+  font: inherit; font-size: 13px; color: var(--ink-2); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 4px; padding: 4px 10px; cursor: pointer;
+}
+button.range.active { color: var(--ink); border-color: var(--series-1); box-shadow: inset 0 0 0 1px var(--series-1); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+@media (max-width: 400px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px 12px 8px; min-width: 0; }
+.card h3 { margin: 0; font-size: 15px; font-weight: 600; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card h3 .code { font-family: var(--mono); font-size: 13px; color: var(--ink-2); font-weight: 500; }
+.card .def { color: var(--ink-2); font-size: 12.5px; margin: 2px 0 6px; overflow-wrap: anywhere; }
+.card .stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.card .stats b { color: var(--ink); font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 5px; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); display: inline-block; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); margin: 0 0 2px; flex-wrap: wrap; }
+.legend .sw { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 4px; padding: 5px 8px; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  font-variant-numeric: tabular-nums; display: none; z-index: 2;
+}
+.tip .t { color: var(--ink-2); }
+.tip .row { display: flex; gap: 8px; justify-content: space-between; }
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; white-space: nowrap; }
+td.wrap { white-space: normal; min-width: 220px; max-width: 440px; }
+th { color: var(--muted); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+tr:last-child td { border-bottom: none; }
+td.num { text-align: right; }
+th.num { text-align: right; }
+h2 { font-size: 16px; margin: 18px 0 8px; }
+p.note { color: var(--ink-2); max-width: 70ch; margin: 4px 0 12px; }
+code { font-family: var(--mono); font-size: 12.5px; }
+.src a { color: inherit; }
+@media (prefers-reduced-motion: no-preference) { nav.tabs a, button.range { transition: background 0.15s, border-color 0.15s; } }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Macro Dataset</h1>
+  <div class="sub" id="subtitle"></div>
+</header>
+<div class="tiles" id="tiles"></div>
+<nav class="tabs" id="tabs">
+  <a href="#coverage" data-view="coverage">Coverage</a>
+  <a href="#model" data-view="model">Model variables</a>
+  <a href="#levels" data-view="levels">Levels and indices</a>
+  <a href="#raw" data-view="raw">Raw series</a>
+</nav>
+<div class="toolbar" id="toolbar" hidden>
+  <span class="lab">Show from</span>
+</div>
+<main id="main"></main>
+
+<script>
+const PAYLOAD = __PAYLOAD__;
+</script>
+<script>
+(function () {
+  const P = PAYLOAD;
+  const T = P.dates.length;
+  const $ = (sel) => document.querySelector(sel);
+  const el = (tag, attrs, children) => {
+    const e = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      if (k === 'text') e.textContent = attrs[k];
+      else if (k === 'html') e.innerHTML = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    (children || []).forEach((c) => e.appendChild(c));
+    return e;
+  };
+  const fmt = (v, d) => (v === null || v === undefined || Number.isNaN(v)) ? '' :
+    Number(v).toLocaleString('en-US', { maximumFractionDigits: d === undefined ? 3 : d, minimumFractionDigits: 0 });
+  const val = (name) => P.values[name] || [];
+  const colInfo = {};
+  P.columns.forEach((c) => { colInfo[c.name] = c; });
+
+  // ---- header and tiles ----
+  const meta = P.meta;
+  $('#title').textContent = P.title;
+  document.title = P.title;
+  $('#subtitle').textContent = `${meta.sample_start} to ${meta.sample_end}, ${T} quarters. Built ${P.built}.`;
+  const seriesWithGaps = P.raw.filter((r) => r.gaps && r.gaps.length);
+  const lastRaw = P.raw.reduce((a, r) => (r.last > a ? r.last : a), '');
+  const tiles = [
+    ['Quarters', T, `${meta.sample_start} to ${meta.sample_end}`],
+    ['Model variables', (meta.model_variables || []).length, 'dc dinve dy dw pinfobs labobs robs ebpobs'],
+    ['Raw series', P.raw.length, `latest observation ${lastRaw}`],
+    ['Population', meta.population, meta.population === 'smoothed' ? `HP trend, lambda ${meta.hp_lambda}` : 'as published'],
+    ['Hours mean', fmt(meta.hours_mean, 2), meta.hours_mean_range_used],
+    ['Interest rate', meta.rate_series, meta.shadow_rate_used ? `shadow rate ${meta.shadow_rate_start} to ${meta.shadow_rate_end}` : `${meta.rate_aggregation}, no shadow rate`],
+    ['Series with gaps', seriesWithGaps.length, seriesWithGaps.map((r) => r.name).join(', ') || 'none'],
+  ];
+  tiles.forEach(([k, v, d]) => $('#tiles').appendChild(el('div', { class: 'tile' }, [
+    el('div', { class: 'k', text: k }), el('div', { class: 'v', text: String(v) }), el('div', { class: 'd', text: d })])));
+
+  // ---- range selector ----
+  const lastYear = Math.floor(P.t[T - 1]);
+  const ranges = [['All', -Infinity], ['Since 1960', 1960], ['Since 1985', 1985], ['Since 2007', 2007], ['Last 10 years', lastYear - 9]];
+  let fromYear = -Infinity;
+  try { const s = localStorage.getItem('macrodata.from'); if (s !== null) fromYear = Number(s); } catch (e) { /* ignore */ }
+  const toolbar = $('#toolbar');
+  ranges.forEach(([label, y], i) => {
+    const b = el('button', { class: 'range', id: 'range-' + i, type: 'button', text: label });
+    if (y === fromYear) b.classList.add('active');
+    b.addEventListener('click', () => {
+      fromYear = y;
+      try { localStorage.setItem('macrodata.from', String(y)); } catch (e) { /* ignore */ }
+      toolbar.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+    toolbar.appendChild(b);
+  });
+  if (!toolbar.querySelector('button.active')) toolbar.querySelector('button').classList.add('active');
+
+  // ---- line chart (SVG, hover tooltip) ----
+  function lineChart(container, series, opts) {
+    // series: [{name, t: [], v: [], color, width}], values null for missing.
+    opts = opts || {};
+    const W = 640, H = 240, m = { l: 52, r: 12, t: 10, b: 26 };
+    const from = opts.from === undefined ? -Infinity : opts.from;
+    const pts = series.map((s) => {
+      const out = [];
+      for (let i = 0; i < s.t.length; i++) if (s.t[i] >= from && s.v[i] !== null && s.v[i] !== undefined && !Number.isNaN(s.v[i])) out.push([s.t[i], s.v[i], i]);
+      return out;
+    });
+    const all = pts.flat();
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('role', 'img');
+    if (!all.length) {
+      svg.appendChild(text(W / 2, H / 2, 'no observations in this range', 'middle', 'var(--muted)'));
+      container.appendChild(svg);
+      return;
+    }
+    let x0 = Math.min(...all.map((p) => p[0])), x1 = Math.max(...all.map((p) => p[0]));
+    let y0 = Math.min(...all.map((p) => p[1])), y1 = Math.max(...all.map((p) => p[1]));
+    if (x1 === x0) { x0 -= 0.5; x1 += 0.5; }
+    if (y1 === y0) { y0 -= 1; y1 += 1; }
+    const yt = niceTicks(y0, y1, 5);
+    y0 = yt[0]; y1 = yt[yt.length - 1];
+    const sx = (x) => m.l + (x - x0) / (x1 - x0) * (W - m.l - m.r);
+    const sy = (y) => m.t + (y1 - y) / (y1 - y0) * (H - m.t - m.b);
+    // grid and axes
+    yt.forEach((y) => {
+      svg.appendChild(line(m.l, sy(y), W - m.r, sy(y), 'var(--grid)', 1));
+      svg.appendChild(text(m.l - 6, sy(y) + 4, fmt(y, 6), 'end', 'var(--muted)'));
+    });
+    if (y0 < 0 && y1 > 0) svg.appendChild(line(m.l, sy(0), W - m.r, sy(0), 'var(--axis)', 1));
+    const xt = niceTicks(x0, x1, 7).filter((x) => x >= x0 && x <= x1);
+    xt.forEach((x) => {
+      svg.appendChild(line(sx(x), H - m.b, sx(x), H - m.b + 4, 'var(--axis)', 1));
+      svg.appendChild(text(sx(x), H - 8, String(Math.round(x)), 'middle', 'var(--muted)'));
+    });
+    svg.appendChild(line(m.l, H - m.b, W - m.r, H - m.b, 'var(--axis)', 1));
+    // series paths, broken where observations are missing
+    series.forEach((s, k) => {
+      const p = pts[k];
+      let d = '';
+      for (let i = 0; i < p.length; i++) {
+        const gap = i > 0 && (p[i][2] - p[i - 1][2] > 1);
+        d += (i === 0 || gap ? 'M' : 'L') + sx(p[i][0]).toFixed(1) + ' ' + sy(p[i][1]).toFixed(1);
+      }
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', s.color);
+      path.setAttribute('stroke-width', s.width || 1.6);
+      path.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(path);
+      // isolated points (neighbours missing) get a marker so they are visible
+      for (let i = 0; i < p.length; i++) {
+        const lonely = (i === 0 || p[i][2] - p[i - 1][2] > 1) && (i === p.length - 1 || p[i + 1][2] - p[i][2] > 1);
+        if (lonely) {
+          const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          c.setAttribute('cx', sx(p[i][0])); c.setAttribute('cy', sy(p[i][1])); c.setAttribute('r', 2.5);
+          c.setAttribute('fill', s.color);
+          svg.appendChild(c);
+        }
+      }
+    });
+    // hover crosshair and tooltip
+    const cross = line(0, m.t, 0, H - m.b, 'var(--axis)', 1);
+    cross.setAttribute('stroke-dasharray', '3 3');
+    cross.style.display = 'none';
+    svg.appendChild(cross);
+    const dots = series.map((s) => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('r', 4); c.setAttribute('fill', s.color); c.setAttribute('stroke', 'var(--surface)'); c.setAttribute('stroke-width', 2);
+      c.style.display = 'none'; svg.appendChild(c); return c;
+    });
+    const tip = el('div', { class: 'tip' });
+    container.appendChild(svg);
+    container.appendChild(tip);
+    const move = (ev) => {
+      const rect = svg.getBoundingClientRect();
+      const px = (ev.clientX - rect.left) / rect.width * W;
+      const x = x0 + (px - m.l) / (W - m.l - m.r) * (x1 - x0);
+      let rows = [], xs = null;
+      series.forEach((s, k) => {
+        const p = pts[k];
+        if (!p.length) { dots[k].style.display = 'none'; return; }
+        let best = 0, bd = Infinity;
+        for (let i = 0; i < p.length; i++) { const d = Math.abs(p[i][0] - x); if (d < bd) { bd = d; best = i; } }
+        const q = p[best];
+        if (xs === null) xs = q[0];
+        dots[k].setAttribute('cx', sx(q[0])); dots[k].setAttribute('cy', sy(q[1])); dots[k].style.display = '';
+        rows.push({ name: s.name, label: s.label ? s.label[q[2]] : String(q[0]), v: q[1], color: s.color });
+      });
+      if (xs === null) return;
+      cross.setAttribute('x1', sx(xs)); cross.setAttribute('x2', sx(xs)); cross.style.display = '';
+      tip.innerHTML = '';
+      rows.forEach((r) => tip.appendChild(el('div', { class: 'row' }, [
+        el('span', { class: 't', html: `<span class="sw" style="background:${r.color};display:inline-block;width:10px;height:2px;margin-right:6px;vertical-align:middle"></span>${escapeHtml(r.name)} ${escapeHtml(r.label)}` }),
+        el('b', { text: fmt(r.v, 4) })])));
+      tip.style.display = 'block';
+      const left = (ev.clientX - rect.left);
+      tip.style.left = Math.min(left + 12, rect.width - tip.offsetWidth - 4) + 'px';
+      tip.style.top = Math.max(0, (ev.clientY - rect.top) - tip.offsetHeight - 10) + 'px';
+    };
+    svg.addEventListener('mousemove', move);
+    svg.addEventListener('touchmove', (e) => { if (e.touches[0]) move(e.touches[0]); }, { passive: true });
+    svg.addEventListener('mouseleave', () => { tip.style.display = 'none'; cross.style.display = 'none'; dots.forEach((d) => { d.style.display = 'none'; }); });
+  }
+  function line(x1, y1, x2, y2, stroke, w) {
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1); l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+    l.setAttribute('stroke', stroke); l.setAttribute('stroke-width', w); return l;
+  }
+  function text(x, y, s, anchor, fill) {
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('text-anchor', anchor);
+    t.setAttribute('fill', fill); t.setAttribute('font-size', '11'); t.setAttribute('font-family', 'inherit');
+    t.textContent = s; return t;
+  }
+  function niceTicks(a, b, n) {
+    const span = b - a, raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const steps = [1, 2, 2.5, 5, 10];
+    let step = p * steps.find((s) => raw / p <= s);
+    const lo = Math.floor(a / step) * step, hi = Math.ceil(b / step) * step;
+    const out = [];
+    for (let v = lo; v <= hi + step / 2; v += step) out.push(Number(v.toFixed(10)));
+    return out;
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  // ---- coverage of an output column ----
+  function coverage(v) {
+    let first = -1, last = -1, n = 0;
+    for (let i = 0; i < v.length; i++) if (v[i] !== null) { if (first < 0) first = i; last = i; n++; }
+    const interior = first < 0 ? 0 : (last - first + 1 - n);
+    const missing = [];
+    if (first >= 0) for (let i = first; i <= last; i++) if (v[i] === null) missing.push(P.dates[i]);
+    return { first, last, n, interior, missing };
+  }
+
+  // ---- views ----
+  function variableCard(name) {
+    const v = val(name), c = colInfo[name] || {}, cov = coverage(v);
+    const card = el('div', { class: 'card' });
+    card.appendChild(el('h3', {}, [el('span', { text: name }), el('span', { class: 'code', text: c.units || '' })]));
+    if (c.definition) card.appendChild(el('div', { class: 'def', text: c.definition }));
+    const stats = el('div', { class: 'stats' });
+    if (cov.n) {
+      stats.appendChild(el('span', { html: `last <b>${fmt(v[cov.last], 4)}</b> in ${P.dates[cov.last]}` }));
+      stats.appendChild(el('span', { html: `${P.dates[cov.first]} to ${P.dates[cov.last]}, <b>${cov.n}</b> quarters` }));
+      if (cov.interior) stats.appendChild(el('span', { class: 'chip', html: `<span class="dot"></span>missing ${cov.missing.slice(0, 6).join(', ')}${cov.missing.length > 6 ? ' ...' : ''}` }));
+    } else {
+      stats.appendChild(el('span', { text: 'no observations' }));
+    }
+    card.appendChild(stats);
+    const chart = el('div', { class: 'chart' });
+    card.appendChild(chart);
+    lineChart(chart, [{ name, t: P.t, v, color: 'var(--series-1)', label: P.dates }], { from: fromYear });
+    return card;
+  }
+
+  function rawCard(r) {
+    const card = el('div', { class: 'card' });
+    card.appendChild(el('h3', {}, [el('span', { text: r.name }), el('span', { class: 'code', text: r.units })]));
+    if (r.code !== r.name) card.appendChild(el('div', { class: 'def', html: `<code>${escapeHtml(r.code)}</code>` }));
+    card.appendChild(el('div', { class: 'def', text: `${r.description}. ${r.frequency}, quarterly ${r.aggregation === 'none' ? 'as published' : r.aggregation}. Source ${r.source}.` }));
+    const stats = el('div', { class: 'stats' });
+    stats.appendChild(el('span', { html: `last <b>${fmt(r.v[r.v.length - 1], 4)}</b> on ${r.frequency === 'annual' ? r.last.slice(0, 4) : r.last}` }));
+    stats.appendChild(el('span', { html: `${r.first} to ${r.last}, <b>${r.n}</b> observations` }));
+    stats.appendChild(el('span', { text: `downloaded ${r.downloaded}` }));
+    if (r.gaps && r.gaps.length) stats.appendChild(el('span', { class: 'chip', html: `<span class="dot"></span>not published: ${r.gaps.join(', ')}` }));
+    card.appendChild(stats);
+    const series = [{ name: r.name, t: r.t, v: r.v, color: 'var(--series-1)', width: r.frequency === 'quarterly' ? 1.6 : 1.1, label: r.t.map((t) => decimalToDate(t, r.frequency)) }];
+    if (r.frequency !== 'quarterly' && P.values[r.name]) {
+      series.push({ name: 'quarterly', t: P.t, v: val(r.name), color: 'var(--series-2)', width: 1.6, label: P.dates });
+      card.appendChild(el('div', { class: 'legend', html: `<span><span class="sw" style="background:var(--series-1)"></span>${r.frequency} as published</span><span><span class="sw" style="background:var(--series-2)"></span>quarterly ${r.aggregation === 'interpolate' ? 'interpolated' : r.aggregation}</span>` }));
+    }
+    const chart = el('div', { class: 'chart' });
+    card.appendChild(chart);
+    lineChart(chart, series, { from: fromYear });
+    return card;
+  }
+  function decimalToDate(t, freq) {
+    const y = Math.floor(t), f = t - y;
+    if (freq === 'monthly') return `${y}M${String(Math.round(f * 12) + 1).padStart(2, '0')}`;
+    if (freq === 'annual') return String(y);
+    const d = new Date(Date.UTC(y, 0, 1) + f * (Date.UTC(y + 1, 0, 1) - Date.UTC(y, 0, 1)));
+    return d.toISOString().slice(0, 10);
+  }
+
+  function coverageView(main) {
+    main.appendChild(el('h2', { text: 'Raw series' }));
+    main.appendChild(el('p', { class: 'note', text: 'One row per downloaded series: native frequency, the rule used to make it quarterly, the first and last observation available at the source, and any period the source did not publish.' }));
+    const t1 = el('table');
+    t1.appendChild(el('thead', {}, [el('tr', {}, ['Name', 'Code', 'Description', 'Source', 'Frequency', 'Quarterly', 'First', 'Last', 'Obs', 'Not published', 'Downloaded'].map((h, i) => el('th', { class: i === 8 ? 'num' : '', text: h })))]));
+    const tb = el('tbody');
+    P.raw.forEach((r) => tb.appendChild(el('tr', {}, [
+      el('td', { html: `<code>${escapeHtml(r.name)}</code>` }),
+      el('td', { class: 'wrap', html: `<code>${escapeHtml(r.code)}</code>` }),
+      el('td', { class: 'wrap', text: `${r.description} (${r.units})` }),
+      el('td', { class: 'src', html: r.url ? `<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.source)}</a>` : escapeHtml(r.source) }),
+      el('td', { text: r.frequency }), el('td', { text: r.aggregation }), el('td', { text: r.first }), el('td', { text: r.last }),
+      el('td', { class: 'num', text: fmt(r.n, 0) }),
+      el('td', { html: r.gaps && r.gaps.length ? `<span class="chip"><span class="dot"></span>${escapeHtml(r.gaps.join(', '))}</span>` : '' }),
+      el('td', { text: r.downloaded })])));
+    t1.appendChild(tb);
+    main.appendChild(el('div', { class: 'tablewrap' }, [t1]));
+
+    main.appendChild(el('h2', { text: 'Output columns' }));
+    main.appendChild(el('p', { class: 'note', text: `Coverage of each column on the ${meta.sample_start} to ${meta.sample_end} grid. A quarter is missing inside a column's range when a source series has a gap or an index is undefined there; nothing is interpolated.` }));
+    const t2 = el('table');
+    t2.appendChild(el('thead', {}, [el('tr', {}, ['Column', 'Group', 'Definition', 'Units', 'First', 'Last', 'Quarters', 'Missing inside range'].map((h, i) => el('th', { class: i === 6 ? 'num' : '', text: h })))]));
+    const tb2 = el('tbody');
+    P.columns.forEach((c) => {
+      const cov = coverage(val(c.name));
+      tb2.appendChild(el('tr', {}, [
+        el('td', { html: `<code>${escapeHtml(c.name)}</code>` }), el('td', { text: c.group }),
+        el('td', { class: 'wrap', text: c.definition || '' }), el('td', { text: c.units || '' }),
+        el('td', { text: cov.n ? P.dates[cov.first] : '' }), el('td', { text: cov.n ? P.dates[cov.last] : '' }),
+        el('td', { class: 'num', text: fmt(cov.n, 0) }),
+        el('td', { html: cov.interior ? `<span class="chip"><span class="dot"></span>${escapeHtml(cov.missing.join(', '))}</span>` : 'none' })]));
+    });
+    t2.appendChild(tb2);
+    main.appendChild(el('div', { class: 'tablewrap' }, [t2]));
+
+    main.appendChild(el('h2', { text: 'Options used' }));
+    const t3 = el('table');
+    const tb3 = el('tbody');
+    const opts = [
+      ['Sample', `${meta.sample_start} to ${meta.sample_end} (sample_end option: ${meta.sample_end_option})`],
+      ['Index base', meta.index_base],
+      ['Population', `${meta.population_series}, ${meta.population}` + (meta.population === 'smoothed' ? `, HP lambda ${meta.hp_lambda}` : '')],
+      ['Population gaps bridged for the HP trend', (meta.population_gaps_bridged_for_hp || []).length ? [].concat(meta.population_gaps_bridged_for_hp).join(', ') : 'none'],
+      ['Hours demeaned over', `${meta.hours_mean_range_used} (${meta.hours_mean_n} quarters), mean ${fmt(meta.hours_mean, 4)}; options ${meta.hours_mean_start_option} to ${meta.hours_mean_end_option}`],
+      ['Interest rate', `${meta.rate_series}, ${meta.rate_aggregation} within the quarter`],
+      ['Options taken from the country defaults', [].concat(meta.options_resolved_from_auto || []).join(', ') || 'none'],
+      ['Shadow rate', meta.shadow_rate_used ? `replaces the federal funds rate from ${meta.shadow_rate_start} to ${meta.shadow_rate_end}` : 'not used'],
+      ['Built', P.built],
+    ];
+    opts.forEach(([k, v]) => tb3.appendChild(el('tr', {}, [el('td', { text: k }), el('td', { class: 'wrap', text: v })])));
+    t3.appendChild(tb3);
+    main.appendChild(el('div', { class: 'tablewrap' }, [t3]));
+
+    main.appendChild(el('h2', { text: 'Sources and citations' }));
+    const ul = el('ul');
+    P.raw.forEach((r) => ul.appendChild(el('li', { text: `${r.name}: ${r.citation}` })));
+    main.appendChild(ul);
+  }
+
+  function render() {
+    const view = (location.hash || '#coverage').slice(1);
+    document.querySelectorAll('nav.tabs a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
+    const main = $('#main');
+    main.innerHTML = '';
+    toolbar.hidden = view === 'coverage';
+    if (view === 'coverage') { coverageView(main); return; }
+    const grid = el('div', { class: 'grid' });
+    if (view === 'model') (meta.model_variables || []).forEach((n) => grid.appendChild(variableCard(n)));
+    else if (view === 'levels') (meta.levels || []).forEach((n) => grid.appendChild(variableCard(n)));
+    else if (view === 'raw') P.raw.forEach((r) => grid.appendChild(rawCard(r)));
+    else { coverageView(main); return; }
+    main.appendChild(grid);
+  }
+  window.addEventListener('hashchange', render);
+  render();
+})();
+</script>
+</body>
+</html>
