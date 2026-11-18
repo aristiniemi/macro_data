@@ -48,18 +48,20 @@ Every option taken from a country default is listed in the metadata file under `
 
 The grid is quarterly. Monthly and daily source series are aggregated to quarters with the rule stated for each series in `series_list.csv`. Every series is placed on the grid by its date, never by position. A quarter at which a series is not available is missing (empty in the CSV, `NaN` in the `.mat` file); nothing is interpolated or carried forward.
 
-**Model variables** (Smets and Wouters 2007 observables), all in percent. The definitions below are written with the US series names; the euro-area column shows the counterpart.
+**Model variables** (Smets and Wouters 2007 observables). The levels they are built from are 100 times a logarithm, so a change of 1 in a level is 1 percent. The definitions below are written with the US series names; the euro-area column of the next table shows the counterparts.
 
-| Column | Definition |
-|---|---|
-| `dc` | consumption minus consumption of the previous quarter |
-| `dinve` | investment minus investment of the previous quarter |
-| `dy` | output minus output of the previous quarter |
-| `dw` | real wage minus real wage of the previous quarter |
-| `pinfobs` | `100 * (log GDPDEF - log GDPDEF of the previous quarter)` |
-| `labobs` | hours minus their mean over `hours_mean_start` to `hours_mean_end`; the range and the mean used are in the metadata file, because with the default end the mean moves when data are added |
-| `robs` | policy rate divided by 4 (quarterly average by default): the federal funds rate for the US, the 3-month Euribor for the euro area; over the shadow-rate range, the shadow rate divided by 4 |
-| `ebpobs` | excess bond premium, quarterly average by default; all missing for the euro area, which has no such series in the ECB Data Portal |
+| Column | Definition | Units |
+|---|---|---|
+| `dc` | consumption minus consumption of the previous quarter | percent per quarter (100 × log change of real consumption per head) |
+| `dinve` | investment minus investment of the previous quarter | percent per quarter (100 × log change of real investment per head) |
+| `dy` | output minus output of the previous quarter | percent per quarter (100 × log change of real GDP per head) |
+| `dw` | real wage minus real wage of the previous quarter | percent per quarter (100 × log change of the real wage) |
+| `pinfobs` | `100 * (log GDPDEF - log GDPDEF of the previous quarter)` | percent per quarter (quarterly inflation, not annualised) |
+| `labobs` | hours minus their mean over `hours_mean_start` to `hours_mean_end`; the range and the mean used are in the metadata file, because with the default end the mean moves when data are added | percent deviation of hours per head from their mean (100 × log) |
+| `robs` | policy rate divided by 4 (quarterly average by default): the federal funds rate for the US, the 3-month Euribor for the euro area; over the shadow-rate range, the shadow rate divided by 4 | percent per quarter (annual rate in percent divided by 4) |
+| `ebpobs` | excess bond premium, quarterly average by default; all missing for the euro area, which has no such series in the ECB Data Portal | percentage points of annual yield |
+
+A quarterly growth rate of 0.5 in `dy` means 0.5 percent per quarter, about 2 percent per year; a value of 1 in `robs` means an annual rate of 4 percent.
 
 **Levels and indices**, from which the model variables are built:
 
